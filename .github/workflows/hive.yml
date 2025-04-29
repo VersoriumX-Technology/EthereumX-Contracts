@@ -1,0 +1,130 @@
+# Runs VersoriumX-Technology tests.
+
+name: VersoriumX-Technology
+
+on:
+  workflow_dispatch:
+  schedule:
+    # every day
+    - cron: "0 0 * * *"
+
+env:
+  CARGO_TERM_COLOR: always
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  prepare-versoriumx:
+    if: github.repository == 'yourusername/versoriumx-technology'  # Update with your actual repository
+    timeout-minutes: 45
+    runs-on:
+      group: VersoriumX
+    steps:
+      - uses: actions/checkout@v4
+      - run: mkdir artifacts
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Build VersoriumX
+        run: |
+          cargo build --features asm-keccak --profile hivetests --bin versoriumx --locked
+          mkdir dist && cp ./target/hivetests/versoriumx ./dist/versoriumx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build and export VersoriumX image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: .github/assets/hive/Dockerfile
+          tags: ghcr.io/yourusername/versoriumx:latest  # Update with your actual image name
+          outputs: type=docker,dest=./artifacts/versoriumx_image.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Upload VersoriumX image
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts
+          path: ./artifacts
+
+  prepare-hive:
+    if: github.repository == 'yourusername/versoriumx-technology'  # Update with your actual repository
+    timeout-minutes: 45
+    runs-on:
+      group: VersoriumX
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout hive tests
+        uses: actions/checkout@v4
+        with:
+          repository: yourusername/hive  # Update with your actual hive repository
+          ref: master
+          path: hivetests
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "^1.13.1"
+      - run: go version
+
+      - name: Build hive assets
+        run: .github/assets/hive/build_simulators.sh
+
+      - name: Upload hive assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: hive_assets
+          path: ./hive_assets
+
+  test:
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [regular, experimental]
+        scenario:
+          - sim: smoke/genesis
+          - sim: smoke/network
+          - sim: ethereum/sync
+          - sim: devp2p
+            limit: discv4
+          - sim: devp2p
+            limit: eth
+            include:
+              - TestStatus
+              - TestGetBlockHeaders
+              - TestSimultaneousRequests
+              - TestSameRequestID
+              - TestZeroRequestID
+              - TestGetBlockBodies
+              - TestMaliciousHandshake
+              - TestMaliciousStatus
+              - TestLargeTxRequest
+              - TestTransaction
+              - TestInvalidTxs
+              - TestNewPooledTxs
+              - TestBlobViolations
+          - sim: ethereum/engine
+            limit: engine-exchange-capabilities
+          - sim: ethereum/engine
+            limit: engine-withdrawals
+          - sim: ethereum/engine
+            limit: engine-auth
+          - sim: ethereum/engine
+            limit: engine-api
+          - sim: ethereum/engine
+            limit: cancun
+          - sim: ethereum/rpc-compat
+            include:
+              - eth_blockNumber
+              - eth_call
+              - eth_chainId
+              - eth_createAccessList
+              - eth_estimateGas
+              - eth_feeHistory
+              - eth_getBalance
+              - eth_getBlockBy
+              - eth_getBlockTransactionCountBy
+              - eth_get
