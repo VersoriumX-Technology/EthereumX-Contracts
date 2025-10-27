@@ -22,7 +22,7 @@ jobs:
     runs-on:
       group: VersoriumX
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: mkdir artifacts
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -56,9 +56,9 @@ jobs:
     runs-on:
       group: VersoriumX
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Checkout hive tests
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: yourusername/hive  # Update with your actual hive repository
           ref: master

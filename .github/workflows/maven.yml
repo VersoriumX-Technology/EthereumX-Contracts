@@ -36,7 +36,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
 
@@ -103,7 +103,7 @@ jobs:
           echo "REPO_USER=$target_user" >> $GITHUB_ENV
 
       - name: Checkout maven-integration-testing
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: ${{ env.REPO_USER }}/maven-integration-testing
           path: maven-integration-testing/
